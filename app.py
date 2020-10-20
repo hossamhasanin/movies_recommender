@@ -2,15 +2,19 @@ import os
 from flask import *
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-import tensorflow_hub as hub
-
+# import tensorflow as tf
+# import tensorflow_hub as hub
+import tensorflow.compat.v1 as tf
+from lite_encoder import LiteEncoder
+tf.disable_v2_behavior()
 
 app = Flask(__name__)
 
 embeddings = np.load(
     "../data/movies_embed.npy", allow_pickle=True)
-embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder/3")
+# embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder/3")
+
+embed = LiteEncoder()
 df = pd.read_csv("../data/movies.csv")
 indcies = pd.Series(df.index, index=df["title"])
 norm = np.linalg.norm(embeddings, axis=1)
@@ -38,12 +42,17 @@ def predic_based_on_name():
 
 @app.route('/desc', methods=['GET'])
 def predic_based_on_desc():
+
+    # # here we want to get the value of desc (i.e. ?desc=some-value)
     try:
-        # here we want to get the value of desc (i.e. ?desc=some-value)
         desc_movie = request.args.get('desc')
-        desc_embed = embed([desc_movie])
+        # desc_embed = embed([desc_movie])
+        desc_embed = embed.encode(
+            sentences=[desc_movie])
         print(desc_embed)
-        sim = np.sum(desc_embed["outputs"] * embeddings,
+        # sim = np.sum(desc_embed["outputs"] * embeddings,
+        #              axis=1) / norm
+        sim = np.sum(desc_embed * embeddings,
                      axis=1) / norm
         sim_scores = list(enumerate(sim))
         return predict_movies(sim_scores)
